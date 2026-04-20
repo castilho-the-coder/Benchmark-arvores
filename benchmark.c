@@ -89,11 +89,19 @@ void remover_rb_wrapper(void* arvore, int valor) {
 int main() {
     srand(time(NULL));
 
+    const int NUM_EXECUCOES = 5;
     int tamanhos[] = {1000, 10000, 100000, 1000000};
     const char* nomes_arquivos[] = {"chaves_1k.txt", "chaves_10k.txt", "chaves_100k.txt", "chaves_1m.txt"};
     int num_tamanhos = sizeof(tamanhos) / sizeof(tamanhos[0]);
 
-    printf("Iniciando Benchmark...\n\n");
+    time_t inicio_total, fim_total;
+    char buffer_inicio[26], buffer_fim[26];
+    struct tm* tm_info;
+
+    time(&inicio_total);
+    tm_info = localtime(&inicio_total);
+    strftime(buffer_inicio, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+    printf("Iniciando Benchmark em: %s\n\n", buffer_inicio);
 
     for (int i = 0; i < num_tamanhos; i++) {
         int tamanho = tamanhos[i];
@@ -110,46 +118,59 @@ int main() {
         gerar_dados(dados, tamanho, nomes_arquivos[i]);
         printf("Arquivo %s gerado com as chaves embaralhadas.\n\n", nomes_arquivos[i]);
 
-        // --- Benchmark ABB ---
-        ArvoreABB abb = criarArvoreABB();
-        double tempo_insercao_abb = medir_tempo(inserir_abb_wrapper, &abb, dados, tamanho);
-        double tempo_busca_abb = medir_tempo(buscar_abb_wrapper, &abb, dados, tamanho);
-        double tempo_remocao_abb = medir_tempo(remover_abb_wrapper, &abb, dados, tamanho);
-        destruirArvoreABB(&abb);
+        double total_insercao_abb = 0, total_busca_abb = 0, total_remocao_abb = 0;
+        double total_insercao_avl = 0, total_busca_avl = 0, total_remocao_avl = 0;
+        double total_insercao_rb = 0, total_busca_rb = 0, total_remocao_rb = 0;
+
+        for (int j = 0; j < NUM_EXECUCOES; j++) {
+            shuffle(dados, tamanho); // Re-embaralhar para cada execução
+
+            // --- Benchmark ABB ---
+            ArvoreABB abb = criarArvoreABB();
+            total_insercao_abb += medir_tempo(inserir_abb_wrapper, &abb, dados, tamanho);
+            total_busca_abb += medir_tempo(buscar_abb_wrapper, &abb, dados, tamanho);
+            total_remocao_abb += medir_tempo(remover_abb_wrapper, &abb, dados, tamanho);
+            destruirArvoreABB(&abb);
+
+            // --- Benchmark AVL ---
+            ArvoreAVL avl = criarArvoreAVL();
+            total_insercao_avl += medir_tempo(inserir_avl_wrapper, &avl, dados, tamanho);
+            total_busca_avl += medir_tempo(buscar_avl_wrapper, &avl, dados, tamanho);
+            total_remocao_avl += medir_tempo(remover_avl_wrapper, &avl, dados, tamanho);
+            destruirArvoreAVL(&avl);
+
+            // --- Benchmark Rubro-Negra ---
+            ArvoreRB rb = criarArvoreRB();
+            total_insercao_rb += medir_tempo(inserir_rb_wrapper, &rb, dados, tamanho);
+            total_busca_rb += medir_tempo(buscar_rb_wrapper, &rb, dados, tamanho);
+            total_remocao_rb += medir_tempo(remover_rb_wrapper, &rb, dados, tamanho);
+            destruirArvoreRB(&rb);
+        }
+
+        printf("Resultados (Media de %d execucoes):\n\n", NUM_EXECUCOES);
 
         printf("ABB:\n");
-        printf("  Tempo de Insercao: %f segundos\n", tempo_insercao_abb);
-        printf("  Tempo de Busca:    %f segundos\n", tempo_busca_abb);
-        printf("  Tempo de Remocao:  %f segundos\n\n", tempo_remocao_abb);
-
-        // --- Benchmark AVL ---
-        ArvoreAVL avl = criarArvoreAVL();
-        double tempo_insercao_avl = medir_tempo(inserir_avl_wrapper, &avl, dados, tamanho);
-        double tempo_busca_avl = medir_tempo(buscar_avl_wrapper, &avl, dados, tamanho);
-        double tempo_remocao_avl = medir_tempo(remover_avl_wrapper, &avl, dados, tamanho);
-        destruirArvoreAVL(&avl);
+        printf("  Tempo Medio de Insercao: %f segundos\n", total_insercao_abb / NUM_EXECUCOES);
+        printf("  Tempo Medio de Busca:    %f segundos\n", total_busca_abb / NUM_EXECUCOES);
+        printf("  Tempo Medio de Remocao:  %f segundos\n\n", total_remocao_abb / NUM_EXECUCOES);
 
         printf("AVL:\n");
-        printf("  Tempo de Insercao: %f segundos\n", tempo_insercao_avl);
-        printf("  Tempo de Busca:    %f segundos\n", tempo_busca_avl);
-        printf("  Tempo de Remocao:  %f segundos\n\n", tempo_remocao_avl);
-
-        // --- Benchmark Rubro-Negra ---
-        ArvoreRB rb = criarArvoreRB();
-        double tempo_insercao_rb = medir_tempo(inserir_rb_wrapper, &rb, dados, tamanho);
-        double tempo_busca_rb = medir_tempo(buscar_rb_wrapper, &rb, dados, tamanho);
-        double tempo_remocao_rb = medir_tempo(remover_rb_wrapper, &rb, dados, tamanho);
-        destruirArvoreRB(&rb);
+        printf("  Tempo Medio de Insercao: %f segundos\n", total_insercao_avl / NUM_EXECUCOES);
+        printf("  Tempo Medio de Busca:    %f segundos\n", total_busca_avl / NUM_EXECUCOES);
+        printf("  Tempo Medio de Remocao:  %f segundos\n\n", total_remocao_avl / NUM_EXECUCOES);
 
         printf("Rubro-Negra:\n");
-        printf("  Tempo de Insercao: %f segundos\n", tempo_insercao_rb);
-        printf("  Tempo de Busca:    %f segundos\n", tempo_busca_rb);
-        printf("  Tempo de Remocao:  %f segundos\n\n", tempo_remocao_rb);
+        printf("  Tempo Medio de Insercao: %f segundos\n", total_insercao_rb / NUM_EXECUCOES);
+        printf("  Tempo Medio de Busca:    %f segundos\n", total_busca_rb / NUM_EXECUCOES);
+        printf("  Tempo Medio de Remocao:  %f segundos\n\n", total_remocao_rb / NUM_EXECUCOES);
 
         free(dados);
     }
 
-    printf("Benchmark finalizado.\n");
+    time(&fim_total);
+    tm_info = localtime(&fim_total);
+    strftime(buffer_fim, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+    printf("Benchmark finalizado em: %s\n", buffer_fim);
 
     return 0;
 }
